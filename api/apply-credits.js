@@ -9,19 +9,18 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-// Environment variables (set in your hosting platform)
-const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN; // e.g., 'your-store.myshopify.com'
-const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN; // Admin API access token
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY; // Service role key
-
-// Initialize Supabase with service key for admin operations
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
 /**
  * Apply credits to cart using Shopify Admin API
  */
 module.exports = async (req, res) => {
+  // Environment variables (set in your hosting platform)
+  const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
+  const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+  // Initialize Supabase with service key for admin operations
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');

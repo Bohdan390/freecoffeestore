@@ -14,19 +14,12 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
-// Environment variables
-const SHOPIFY_WEBHOOK_SECRET = process.env.SHOPIFY_WEBHOOK_SECRET;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
 /**
  * Verify Shopify webhook signature
  */
-function verifyWebhook(data, hmacHeader) {
+function verifyWebhook(data, hmacHeader, secret) {
   const hash = crypto
-    .createHmac('sha256', SHOPIFY_WEBHOOK_SECRET)
+    .createHmac('sha256', secret)
     .update(data, 'utf8')
     .digest('base64');
   
@@ -34,6 +27,12 @@ function verifyWebhook(data, hmacHeader) {
 }
 
 module.exports = async (req, res) => {
+  // Environment variables
+  const SHOPIFY_WEBHOOK_SECRET = process.env.SHOPIFY_WEBHOOK_SECRET;
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -43,7 +42,7 @@ module.exports = async (req, res) => {
     const hmacHeader = req.headers['x-shopify-hmac-sha256'];
     const rawBody = JSON.stringify(req.body);
     
-    if (!verifyWebhook(rawBody, hmacHeader)) {
+    if (!verifyWebhook(rawBody, hmacHeader, SHOPIFY_WEBHOOK_SECRET)) {
       console.error('Webhook verification failed');
       return res.status(401).json({ error: 'Unauthorized' });
     }
