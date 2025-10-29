@@ -241,7 +241,7 @@ app.post('/api/cancel-credits', async (req, res) => {
 app.post('/api/order-webhook', async (req, res) => {
   try {
     // Verify webhook
-    console.log("order-webhook endpoint hit");
+    console.warn("order-webhook endpoint hit");
     const hmacHeader = req.headers['x-shopify-hmac-sha256'];
     const rawBody = JSON.stringify(req.body);
     
@@ -252,7 +252,15 @@ app.post('/api/order-webhook', async (req, res) => {
     
     if (hash !== hmacHeader) {
       console.error('Webhook verification failed');
-      return res.status(401).json({ error: 'Unauthorized' });
+      console.error('Expected hash:', hash);
+      console.error('Received HMAC:', hmacHeader);
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        debug: {
+          receivedHMAC: hmacHeader ? 'present' : 'missing',
+          timestamp: new Date().toISOString()
+        }
+      });
     }
 
     const order = req.body;
