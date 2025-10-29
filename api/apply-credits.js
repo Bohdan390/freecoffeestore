@@ -136,22 +136,22 @@ module.exports = async (req, res) => {
     }
 
     // Step 6: Record transaction in database
-    const { error: transactionError } = await supabase
-      .from('credit_transactions')
-      .insert({
-        user_id: userId,
-        amount: creditAmount,
-        type: 'debit',
-        status: 'pending',
-        discount_code: discountCode,
-        price_rule_id: price_rule.id.toString(),
-        description: `Applied $${creditAmount} store credit`
-      });
+    // const { error: transactionError } = await supabase
+    //   .from('credit_transactions')
+    //   .insert({
+    //     user_id: userId,
+    //     amount: creditAmount,
+    //     type: 'debit',
+    //     status: 'pending',
+    //     discount_code: discountCode,
+    //     price_rule_id: price_rule.id.toString(),
+    //     description: `Applied $${creditAmount} store credit`
+    //   });
 
-    if (transactionError) {
-      console.error('Failed to record transaction:', transactionError);
-      // Don't fail the request, transaction is already applied
-    }
+    // if (transactionError) {
+    //   console.error('Failed to record transaction:', transactionError);
+    //   // Don't fail the request, transaction is already applied
+    // }
 
     // Step 7: Return discount code to frontend
     return res.status(200).json({
