@@ -1,0 +1,63 @@
+=================================================
+ENVIRONMENT VARIABLES TEMPLATE
+=================================================
+
+Copy these values and add them to your hosting platform
+(Vercel, Railway, Render, etc.)
+
+-------------------------------------------------
+SHOPIFY CONFIGURATION
+-------------------------------------------------
+
+SHOPIFY_STORE_DOMAIN=your-store.myshopify.com
+  → Example: mystore.myshopify.com
+  → Get from: Shopify Admin URL
+
+SHOPIFY_ACCESS_TOKEN=shpat_xxxxxxxxxxxxxxxxxxxxx
+  → Get from: Shopify Admin → Settings → Apps → Develop apps
+  → Create custom app with Admin API access
+  → Requires: write_price_rules, write_discounts, read_orders
+
+SHOPIFY_WEBHOOK_SECRET=your_webhook_secret_here
+  → Get from: Shopify Admin → Settings → Notifications → Webhooks
+  → After creating webhook, copy the signing secret
+
+-------------------------------------------------
+SUPABASE CONFIGURATION
+-------------------------------------------------
+
+SUPABASE_URL=https://xxxxxxxxxxxxx.supabase.co
+  → Get from: Supabase Dashboard → Settings → API
+  → Copy "Project URL"
+
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+  → Get from: Supabase Dashboard → Settings → API
+  → Copy "service_role" key (NOT anon key!)
+  → ⚠️ KEEP THIS SECRET - Never expose in frontend
+
+=================================================
+DEPLOYMENT COMMANDS
+=================================================
+
+Vercel:
+-------
+vercel env add SHOPIFY_STORE_DOMAIN
+vercel env add SHOPIFY_ACCESS_TOKEN
+vercel env add SHOPIFY_WEBHOOK_SECRET
+vercel env add SUPABASE_URL
+vercel env add SUPABASE_SERVICE_KEY
+
+Then deploy:
+vercel --prod
+
+Railway:
+--------
+Add variables in Railway dashboard, then:
+railway up
+
+Render:
+-------
+Add variables in Render dashboard during service creation
+
+=================================================
+
