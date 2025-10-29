@@ -299,13 +299,13 @@ app.post('/api/order-webhook', async (req, res) => {
       .eq('id', transaction.user_id)
       .single();
 
-    if (profile) {
-      const newBalance = profile.credits - transaction.amount;
-      await supabase
-        .from('profiles')
-        .update({ credits: newBalance })
-        .eq('id', transaction.user_id);
-    }
+    // if (profile) {
+    //   const newBalance = profile.credits - transaction.amount;
+    //   await supabase
+    //     .from('profiles')
+    //     .update({ credits: newBalance })
+    //     .eq('id', transaction.user_id);
+    // }
 
     // Finalize transaction
     await supabase
