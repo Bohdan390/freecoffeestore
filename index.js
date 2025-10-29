@@ -132,19 +132,8 @@ app.post('/api/apply-credits', async (req, res) => {
       throw new Error('Failed to create discount code');
     }
 
-    // Step 5: Deduct credits from user
-    const newBalance = profile.credits - creditAmount;
-    
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ credits: newBalance })
-      .eq('id', userId);
-
-    if (updateError) {
-      throw new Error('Failed to update user credits');
-    }
-
-    // Step 6: Record transaction
+    // Step 5: Record transaction as "pending" (DON'T deduct credits yet!)
+    // Credits will only be deducted after successful payment (webhook)
     await supabase
       .from('credit_transactions')
       .insert({
@@ -154,15 +143,15 @@ app.post('/api/apply-credits', async (req, res) => {
         status: 'pending',
         discount_code: discountCode,
         price_rule_id: price_rule.id.toString(),
-        description: `Applied $${creditAmount} store credit`
+        description: `Reserved $${creditAmount} store credit`
       });
 
-    // Success!
+    // Success! (Note: user's balance NOT changed yet)
     return res.status(200).json({
       success: true,
       discountCode: discountCode,
       discountAmount: creditAmount,
-      newBalance: newBalance,
+      newBalance: profile.credits, // Balance unchanged - credits only reserved
       priceRuleId: price_rule.id
     });
 
@@ -202,19 +191,8 @@ app.post('/api/cancel-credits', async (req, res) => {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    // Restore credits
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('credits')
-      .eq('id', userId)
-      .single();
-
-    const restoredBalance = profile.credits + transaction.amount;
-
-    await supabase
-      .from('profiles')
-      .update({ credits: restoredBalance })
-      .eq('id', userId);
+    // No need to restore credits - they were never deducted!
+    // Credits were only "reserved", not actually taken from balance
 
     // Cancel transaction
     await supabase
@@ -263,6 +241,7 @@ app.post('/api/cancel-credits', async (req, res) => {
 app.post('/api/order-webhook', async (req, res) => {
   try {
     // Verify webhook
+    console.log("order-webhook endpoint hit");
     const hmacHeader = req.headers['x-shopify-hmac-sha256'];
     const rawBody = JSON.stringify(req.body);
     
@@ -305,6 +284,21 @@ app.post('/api/order-webhook', async (req, res) => {
       return res.status(200).json({ message: 'Transaction already processed' });
     }
 
+    // NOW deduct credits from user's balance (payment confirmed!)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('credits')
+      .eq('id', transaction.user_id)
+      .single();
+
+    if (profile) {
+      const newBalance = profile.credits - transaction.amount;
+      await supabase
+        .from('profiles')
+        .update({ credits: newBalance })
+        .eq('id', transaction.user_id);
+    }
+
     // Finalize transaction
     await supabase
       .from('credit_transactions')
@@ -320,7 +314,7 @@ app.post('/api/order-webhook', async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Credits finalized',
+      message: 'Credits finalized and deducted',
       orderId: order.id
     });
 
@@ -328,6 +322,58 @@ app.post('/api/order-webhook', async (req, res) => {
     console.error('Webhook error:', error);
     return res.status(500).json({ 
       error: 'Webhook processing failed',
+      message: error.message 
+    });
+  }
+});
+
+// =====================================
+// CLEANUP OLD PENDING TRANSACTIONS
+// =====================================
+app.post('/api/cleanup-pending', async (req, res) => {
+  try {
+    // Find all pending transactions older than 24 hours
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+    const { data: oldTransactions } = await supabase
+      .from('credit_transactions')
+      .select('*')
+      .eq('status', 'pending')
+      .lt('created_at', twentyFourHoursAgo.toISOString());
+
+    if (oldTransactions && oldTransactions.length > 0) {
+      // Cancel old pending transactions
+      await supabase
+        .from('credit_transactions')
+        .update({
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString()
+        })
+        .eq('status', 'pending')
+        .lt('created_at', twentyFourHoursAgo.toISOString());
+
+      console.log(`🧹 Cleaned up ${oldTransactions.length} old pending transactions`);
+
+      return res.status(200).json({
+        success: true,
+        message: `Cancelled ${oldTransactions.length} abandoned reservations`,
+        transactions: oldTransactions.length
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'No old pending transactions to clean up',
+      transactions: 0
+    });
+
+  } catch (error) {
+    console.error('Cleanup error:', error);
+    return res.status(500).json({ 
+      error: 'Cleanup failed',
       message: error.message 
     });
   }
