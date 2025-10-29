@@ -1,0 +1,950 @@
+{{ 'component-cart.css' | asset_url | stylesheet_tag }}
+{{ 'component-totals.css' | asset_url | stylesheet_tag }}
+{{ 'component-price.css' | asset_url | stylesheet_tag }}
+{{ 'component-discounts.css' | asset_url | stylesheet_tag }}
+
+<style>
+  /* Credits Section Styling */
+  .cart__credits-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+  }
+
+  .credits__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .credits__title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .credits__button {
+    background-color: #008060;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+  }
+
+  .credits__button:hover {
+    background-color: #006e52;
+  }
+
+  .credits__applied {
+    display: none;
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #e8f5e9;
+    border-radius: 4px;
+    border: 1px solid #4caf50;
+  }
+
+  .credits__applied.active {
+    display: block;
+  }
+
+  .credits__applied-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .credits__remove {
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .credits__remove:hover {
+    background-color: #b71c1c;
+  }
+
+  /* Modal Styling */
+  .credits__modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .credits__modal.active {
+    display: flex;
+  }
+
+  .credits__modal-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  .credits__modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 28px;
+    font-weight: bold;
+    color: #aaa;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .credits__modal-close:hover {
+    color: #000;
+  }
+
+  .credits__modal-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 20px;
+  }
+
+  .credits__login-form,
+  .credits__use-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .credits__form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .credits__form-group label {
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  .credits__form-group input {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  .credits__form-group input:focus {
+    outline: none;
+    border-color: #008060;
+  }
+
+  .credits__submit-btn {
+    background-color: #008060;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background-color 0.2s;
+  }
+
+  .credits__submit-btn:hover {
+    background-color: #006e52;
+  }
+
+  .credits__submit-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+
+  .credits__available {
+    padding: 15px;
+    background-color: #e3f2fd;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+
+  .credits__available-amount {
+    font-size: 24px;
+    font-weight: 700;
+    color: #008060;
+  }
+
+  .credits__error {
+    color: #d32f2f;
+    font-size: 14px;
+    margin-top: 10px;
+    display: none;
+  }
+
+  .credits__error.active {
+    display: block;
+  }
+
+  .credits__loading {
+    text-align: center;
+    padding: 20px;
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<div class="page-width{% if cart == empty %} is-empty{% endif %}" id="main-cart-footer" data-id="{{ section.id }}">
+  <div>
+    <div class="cart__footer">
+      {%- if section.settings.show_cart_note -%}
+        <cart-note class="cart__note field">
+          <label for="Cart-note">{{ 'sections.cart.note' | t }}</label>
+          <textarea class="text-area field__input" name="note" form="cart" id="Cart-note" placeholder="{{ 'sections.cart.note' | t }}">{{ cart.note }}</textarea>
+        </cart-note>
+      {%- endif -%}
+
+      <div class="cart__blocks">
+        <!-- Use Credits Section -->
+        <div class="cart__credits-section" id="credits-section">
+          <div class="credits__header">
+            <h3 class="credits__title">Store Credits</h3>
+            <button class="credits__button" id="use-credits-btn">Use Credits</button>
+          </div>
+          
+          <div class="credits__applied" id="credits-applied">
+            <div class="credits__applied-info">
+              <span id="credits-applied-text"></span>
+              <button class="credits__remove" id="remove-credits-btn">Remove</button>
+            </div>
+          </div>
+        </div>
+
+        {% for block in section.blocks %}
+          {%- case block.type -%}
+            {%- when '@app' -%}
+              {% render block %}
+            {%- when 'subtotal' -%}
+              <div class="js-contents" {{ block.shopify_attributes }}>
+                <div class="totals">
+                  <h3 class="totals__subtotal">{{ 'sections.cart.subtotal' | t }}</h3>
+                  <p class="totals__subtotal-value">{{ cart.total_price | money_with_currency }}</p>
+                </div>
+
+                <div>
+                  {%- if cart.cart_level_discount_applications.size > 0 -%}
+                    <ul class="discounts list-unstyled" role="list" aria-label="{{ 'customer.order.discount' | t }}">
+                      {%- for discount in cart.cart_level_discount_applications -%}
+                        <li class="discounts__discount discounts__discount--position">
+                          {%- render 'icon-discount' -%}
+                          {{ discount.title }}
+                          (-{{ discount.total_allocated_amount | money }})
+                        </li>
+                      {%- endfor -%}
+                    </ul>
+                  {%- endif -%}
+                </div>
+
+                <small class="tax-note caption-large rte">
+                  {%- if cart.taxes_included and shop.shipping_policy.body != blank -%}
+                    {{ 'sections.cart.taxes_included_and_shipping_policy_html' | t: link: shop.shipping_policy.url }}
+                  {%- elsif cart.taxes_included -%}
+                    {{ 'sections.cart.taxes_included_but_shipping_at_checkout' | t }}
+                  {%- elsif shop.shipping_policy.body != blank -%}
+                    {{ 'sections.cart.taxes_and_shipping_policy_at_checkout_html' | t: link: shop.shipping_policy.url }}
+                  {%- else -%}
+                    {{ 'sections.cart.taxes_and_shipping_at_checkout' | t }}
+                  {%- endif -%}
+                </small>
+              </div>
+            {%- else -%}
+              <div class="cart__ctas" {{ block.shopify_attributes }}>
+                <noscript>
+                  <button type="submit" class="cart__update-button button button--secondary" form="cart">
+                    {{ 'sections.cart.update' | t }}
+                  </button>
+                </noscript>
+
+                <button type="submit" id="checkout" class="cart__checkout-button button" name="checkout"{% if cart == empty %} disabled{% endif %} form="cart">
+                  {{ 'sections.cart.checkout' | t }}
+                </button>
+              </div>
+
+              {%- if additional_checkout_buttons -%}
+                <div class="cart__dynamic-checkout-buttons additional-checkout-buttons">
+                  {{ content_for_additional_checkout_buttons }}
+                </div>
+              {%- endif -%}
+          {%- endcase -%}
+        {% endfor %}
+
+        <div id="cart-errors"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Credits Modal -->
+<div class="credits__modal" id="credits-modal">
+  <div class="credits__modal-content">
+    <button class="credits__modal-close" id="close-modal">&times;</button>
+    
+    <!-- Login View -->
+    <div id="login-view">
+      <h2 class="credits__modal-title">Login to Use Credits</h2>
+      <form class="credits__login-form" id="login-form">
+        <div class="credits__form-group">
+          <label for="username">Username/Email</label>
+          <input type="text" id="username" name="username" required>
+        </div>
+        <div class="credits__form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit" class="credits__submit-btn" id="login-btn">Login</button>
+        <div class="credits__error" id="login-error"></div>
+      </form>
+    </div>
+
+    <!-- Use Credits View -->
+    <div id="use-credits-view" style="display: none;">
+      <h2 class="credits__modal-title">Use Your Credits</h2>
+      
+      <div class="credits__available">
+        <p style="margin: 0 0 5px 0; font-size: 14px;">Available Credits</p>
+        <div class="credits__available-amount" id="available-credits">$0.00</div>
+      </div>
+
+      <form class="credits__use-form" id="use-credits-form">
+        <div class="credits__form-group">
+          <label for="credit-amount">Amount to Use</label>
+          <input type="number" id="credit-amount" name="credit-amount" min="0" step="0.01" required>
+          <small style="color: #666;">Maximum: <span id="max-credit-amount">$0.00</span></small>
+        </div>
+        <button type="submit" class="credits__submit-btn" id="apply-credits-btn">Apply Credits</button>
+        <div class="credits__error" id="credits-error"></div>
+      </form>
+    </div>
+
+    <!-- Loading View -->
+    <div id="loading-view" style="display: none;">
+      <div class="credits__loading">
+        <p>Loading...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% javascript %}
+  class CartNote extends HTMLElement {
+    constructor() {
+      super();
+
+      this.addEventListener('change', debounce((event) => {
+        const body = JSON.stringify({ note: event.target.value });
+        fetch(`${routes.cart_update_url}`, {...fetchConfig(), ...{ body }});
+      }, 300))
+    }
+  }
+
+  customElements.define('cart-note', CartNote);
+{% endjavascript %}
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    function isIE() {
+      const ua = window.navigator.userAgent;
+      const msie = ua.indexOf('MSIE ');
+      const trident = ua.indexOf('Trident/');
+
+      return (msie > 0 || trident > 0);
+    }
+
+    if (!isIE()) return;
+    const cartSubmitInput = document.createElement('input');
+    cartSubmitInput.setAttribute('name', 'checkout');
+    cartSubmitInput.setAttribute('type', 'hidden');
+    document.querySelector('#cart').appendChild(cartSubmitInput);
+    document.querySelector('#checkout').addEventListener('click', function(event) {
+      document.querySelector('#cart').submit();
+    });
+  });
+</script>
+
+<script>
+  /*
+   * ========================================
+   * SIMPLE SHOPIFY CREDITS SYSTEM
+   * ========================================
+   * 
+   * HOW IT WORKS:
+   * -------------
+   * 1. User logs in with Supabase credentials
+   * 2. User selects credit amount to use (from their Supabase balance)
+   * 3. Credits are deducted from their Supabase account
+   * 4. A discount code is automatically applied to cart (CREDIT-XX format)
+   * 5. User proceeds to checkout with any payment method
+   * 6. After successful payment, credits display is cleared from cart
+   * 7. If user removes discount before checkout, credits are restored
+   * 
+   * SETUP INSTRUCTIONS:
+   * -------------------
+   * 1. Create a Supabase project with user authentication
+   * 2. Add a 'profiles' table with 'credits' column (integer or decimal, 1 credit = $1)
+   * 3. Manually create discount codes in Shopify Admin:
+   *    - Code format: CREDIT-10, CREDIT-25, CREDIT-50, CREDIT-100, etc.
+   *    - Type: Fixed amount discount
+   *    - Amount: Match the number in the code (e.g., CREDIT-25 = $25 off)
+   *    - Set expiration and usage limits as needed
+   * 4. Update SUPABASE_URL and SUPABASE_ANON_KEY below
+   * 
+   * BENEFITS:
+   * ---------
+   * ✓ No external backend server needed
+   * ✓ Works with all Shopify checkout methods
+   * ✓ Auto-clears after successful purchase
+   * ✓ Simple to set up and maintain
+   */
+  
+  // Credits System Implementation
+  (function() {
+    // ===== CONFIGURATION =====
+    const SUPABASE_URL = 'https://heulzxrulgrplrbkkqjt.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhldWx6eHJ1bGdycGxyYmtrcWp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxOTQwNDEsImV4cCI6MjA2ODc3MDA0MX0.LwAmMU4nTphb65wOUFsUJ9tQ8lqHbC4wCZX7kHfO7e4';
+    
+    // Backend API URL - Update this after deploying to Vercel/Railway
+    const BACKEND_API_URL = 'https://your-domain.vercel.app/api'; // TODO: Update this!
+    
+    // Initialize Supabase client
+    let supabase;
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (error) {
+      console.error('Failed to initialize Supabase:', error);
+    }
+
+    // ===== STATE MANAGEMENT =====
+    let currentUser = null;
+    let availableCredits = 0;
+    let appliedCredits = 0;
+    let originalCartTotal = 0;
+
+    // ===== DOM ELEMENTS =====
+    const modal = document.getElementById('credits-modal');
+    const useCreditsBtn = document.getElementById('use-credits-btn');
+    const closeModalBtn = document.getElementById('close-modal');
+    const removeCreditsBtn = document.getElementById('remove-credits-btn');
+    
+    const loginView = document.getElementById('login-view');
+    const useCreditsView = document.getElementById('use-credits-view');
+    const loadingView = document.getElementById('loading-view');
+    
+    const loginForm = document.getElementById('login-form');
+    const useCreditsForm = document.getElementById('use-credits-form');
+    
+    const loginError = document.getElementById('login-error');
+    const creditsError = document.getElementById('credits-error');
+    
+    const availableCreditsEl = document.getElementById('available-credits');
+    const maxCreditAmountEl = document.getElementById('max-credit-amount');
+    const creditAmountInput = document.getElementById('credit-amount');
+    
+    const creditsAppliedSection = document.getElementById('credits-applied');
+    const creditsAppliedText = document.getElementById('credits-applied-text');
+    
+    const subtotalValueEl = document.querySelector('.totals__subtotal-value');
+
+    // ===== UTILITY FUNCTIONS =====
+    function formatMoney(amount) {
+      // 1 credit = 1 dollar, so no conversion needed
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+      }).format(amount);
+    }
+
+    function showView(view) {
+      loginView.style.display = 'none';
+      useCreditsView.style.display = 'none';
+      loadingView.style.display = 'none';
+      view.style.display = 'block';
+    }
+
+    function showError(errorEl, message) {
+      errorEl.textContent = message;
+      errorEl.classList.add('active');
+    }
+
+    function hideError(errorEl) {
+      errorEl.textContent = '';
+      errorEl.classList.remove('active');
+    }
+
+    function openModal() {
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
+      hideError(loginError);
+      hideError(creditsError);
+      loginForm.reset();
+      useCreditsForm.reset();
+    }
+
+    function getCartTotal() {
+      // Get the original cart total from Shopify
+      const cartTotalText = subtotalValueEl.textContent;
+      // Parse the money value (assumes format like "$123.45" or "123.45 USD")
+      const numericValue = parseFloat(cartTotalText.replace(/[^0-9.]/g, ''));
+      return numericValue; // Return as dollars (1:1 with credits)
+    }
+
+    async function getCartItems() {
+      // Get current cart items
+      const response = await fetch('/cart.js');
+      const cart = await response.json();
+      return cart.items.map(item => ({
+        variant_id: item.variant_id,
+        quantity: item.quantity,
+        properties: item.properties
+      }));
+    }
+
+    async function applyCreditsViaAPI(creditAmount) {
+      try {
+        // Get current cart items
+        const cartItems = await getCartItems();
+        
+        // Call backend API to create dynamic discount code
+        const response = await fetch(`${BACKEND_API_URL}/apply-credits`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            creditAmount: creditAmount,
+            userId: currentUser?.id || '',
+            cartItems: cartItems
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to apply credits');
+        }
+
+        const data = await response.json();
+        const discountCode = data.discountCode;
+        const priceRuleId = data.priceRuleId;
+        
+        // Store discount info
+        sessionStorage.setItem('appliedDiscountCode', discountCode);
+        sessionStorage.setItem('creditAmount', creditAmount.toString());
+        sessionStorage.setItem('priceRuleId', priceRuleId);
+        
+        // Add cart attributes for tracking
+        await fetch('/cart/update.js', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            attributes: {
+              'credits_applied': creditAmount.toString(),
+              'credits_user_id': currentUser?.id || '',
+              'discount_code': discountCode
+            }
+          })
+        });
+
+        // Apply the discount code to cart
+        window.location.href = `/discount/${discountCode}?redirect=/cart`;
+
+        return discountCode;
+      } catch (error) {
+        console.error('Error applying discount:', error);
+        throw error;
+      }
+    }
+
+    async function updateCartDisplay() {
+      originalCartTotal = getCartTotal();
+      
+      if (appliedCredits > 0) {
+        // Store applied credits in storage
+        sessionStorage.setItem('appliedCredits', appliedCredits.toString());
+        sessionStorage.setItem('originalTotal', originalCartTotal.toString());
+        sessionStorage.setItem('creditsUserId', currentUser?.id || '');
+        
+        // Apply discount via backend API
+        // This will reload the page with the discount applied
+        try {
+          await applyCreditsViaAPI(appliedCredits);
+          // Note: Page will reload, so code below won't execute
+        } catch (error) {
+          console.error('Failed to apply discount:', error);
+          throw error;
+        }
+      }
+    }
+
+    async function removeAppliedCredits() {
+      const discountCode = sessionStorage.getItem('appliedDiscountCode');
+      const priceRuleId = sessionStorage.getItem('priceRuleId');
+      
+      // Call backend API to restore credits and cancel transaction
+      if (currentUser && discountCode) {
+        try {
+          const response = await fetch(`${BACKEND_API_URL}/cancel-credits`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: currentUser.id,
+              discountCode: discountCode,
+              priceRuleId: priceRuleId
+            })
+          });
+
+          if (!response.ok) {
+            console.error('Failed to cancel credits via API');
+          }
+          
+          const data = await response.json();
+          availableCredits = data.newBalance || availableCredits;
+            
+        } catch (error) {
+          console.error('Error restoring credits:', error);
+        }
+      }
+      
+      // Clear storage
+      sessionStorage.removeItem('appliedCredits');
+      sessionStorage.removeItem('originalTotal');
+      sessionStorage.removeItem('creditsUserId');
+      sessionStorage.removeItem('appliedDiscountCode');
+      sessionStorage.removeItem('creditAmount');
+      sessionStorage.removeItem('priceRuleId');
+      
+      // Clear cart attributes and reload to remove discount
+      try {
+        await fetch('/cart/update.js', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            attributes: {
+              'credits_applied': '',
+              'credits_user_id': '',
+              'discount_code': ''
+            }
+          })
+        });
+        
+        // Reload page to remove discount code
+        window.location.href = '/cart';
+        
+      } catch (error) {
+        console.error('Failed to clear cart:', error);
+      }
+    }
+
+    // ===== SUPABASE FUNCTIONS =====
+    async function loginUser(email, password) {
+      if (!supabase) {
+        throw new Error('Supabase is not initialized. Please check your configuration.');
+      }
+
+      try {
+        showView(loadingView);
+        
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
+
+        if (error) throw error;
+        
+        currentUser = data.user;
+        console.log(currentUser, "currentUser")
+        await fetchUserCredits();
+        showView(useCreditsView);
+        
+      } catch (error) {
+        showView(loginView);
+        throw error;
+      }
+    }
+
+    async function fetchUserCredits() {
+      if (!supabase || !currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      try {
+        // Fetch credits from your Supabase table
+        // Adjust table name and column names according to your schema
+        const { data, error } = await supabase
+          .from('profiles') // Your table name
+          .select('credits')
+          .eq('id', currentUser.id)
+          .single();
+
+        if (error) throw error;
+        
+        // 1 credit = $1, stored directly as dollars
+        availableCredits = data?.credits || 0;
+        
+        // Update UI
+        availableCreditsEl.textContent = formatMoney(availableCredits);
+        
+        // Calculate maximum usable credits (can't exceed cart total)
+        originalCartTotal = getCartTotal();
+        const maxUsable = Math.min(availableCredits, originalCartTotal);
+        maxCreditAmountEl.textContent = formatMoney(maxUsable);
+        creditAmountInput.max = maxUsable.toFixed(2);
+        
+      } catch (error) {
+        console.error('Error fetching credits:', error);
+        throw error;
+      }
+    }
+
+    async function reserveCredits(amount) {
+      if (!supabase || !currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      try {
+        // Temporarily deduct credits (will be finalized after payment via webhook)
+        const newBalance = availableCredits - amount;
+        
+        const { error } = await supabase
+          .from('profiles')
+          .update({ credits: newBalance })
+          .eq('id', currentUser.id);
+
+        if (error) throw error;
+        
+        availableCredits = newBalance;
+        appliedCredits = amount;
+        
+        // Store user info and applied credits
+        sessionStorage.setItem('creditsUserId', currentUser.id);
+        sessionStorage.setItem('appliedCredits', amount.toString());
+        
+        // Note: The backend API will create the credit_transactions record
+        // when it creates the discount code
+        
+      } catch (error) {
+        console.error('Error reserving credits:', error);
+        throw error;
+      }
+    }
+
+    // ===== EVENT HANDLERS =====
+    useCreditsBtn.addEventListener('click', function() {
+      openModal();
+      
+      // Check if user is already logged in
+      if (currentUser && availableCredits > 0) {
+        showView(useCreditsView);
+      } else {
+        showView(loginView);
+      }
+    });
+
+    closeModalBtn.addEventListener('click', closeModal);
+    
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+
+    loginForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      hideError(loginError);
+      
+      const email = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      try {
+        await loginUser(email, password);
+      } catch (error) {
+        showError(loginError, error.message || 'Login failed. Please check your credentials.');
+      }
+    });
+
+    useCreditsForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      hideError(creditsError);
+      
+      const amount = parseFloat(creditAmountInput.value);
+      
+      // Validation
+      if (amount <= 0) {
+        showError(creditsError, 'Please enter a valid amount.');
+        return;
+      }
+      
+      if (amount > availableCredits) {
+        showError(creditsError, 'Insufficient credits available.');
+        return;
+      }
+      
+      originalCartTotal = getCartTotal();
+      if (amount > originalCartTotal) {
+        showError(creditsError, 'Credit amount cannot exceed cart total.');
+        return;
+      }
+      
+      try {
+        showView(loadingView);
+        
+        // Reserve credits temporarily
+        await reserveCredits(amount);
+        
+        // Create and apply discount code (this will reload the page)
+        await updateCartDisplay();
+        
+        // Modal will close after page reloads with discount applied
+      } catch (error) {
+        showView(useCreditsView);
+        showError(creditsError, error.message || 'Failed to apply credits. Please try again.');
+      }
+    });
+
+    removeCreditsBtn.addEventListener('click', async function() {
+      if (confirm('Are you sure you want to remove applied credits? The page will reload.')) {
+        await removeAppliedCredits();
+      }
+    });
+
+    // ===== CLEANUP AFTER CHECKOUT =====
+    function clearCreditsAfterCheckout() {
+      // Clear all session storage related to credits
+      sessionStorage.removeItem('appliedCredits');
+      sessionStorage.removeItem('originalTotal');
+      sessionStorage.removeItem('creditsUserId');
+      sessionStorage.removeItem('appliedDiscountCode');
+      
+      // Hide credits UI
+      creditsAppliedSection.classList.remove('active');
+      appliedCredits = 0;
+      
+      console.log('Credits cleared after successful checkout');
+    }
+
+    // ===== INITIALIZATION =====
+    // Check if returning from successful checkout
+    // If cart is empty or we detect checkout completion, clear credits
+    const urlParams = new URLSearchParams(window.location.search);
+    const isCheckoutReturn = urlParams.has('checkout') || urlParams.has('order');
+    
+    // Check if cart is empty (indicates successful checkout)
+    const cartIsEmpty = document.querySelector('.page-width.is-empty') !== null;
+    
+    if (isCheckoutReturn || cartIsEmpty) {
+      // Clear all credit-related session data after successful checkout
+      clearCreditsAfterCheckout();
+    } else {
+      // Check for existing session and applied credits
+      const storedCredits = sessionStorage.getItem('appliedCredits');
+      const storedDiscountCode = sessionStorage.getItem('appliedDiscountCode');
+      
+      if (storedCredits && storedDiscountCode) {
+        appliedCredits = parseInt(storedCredits);
+        
+        // Show applied credits UI only if cart has items
+        if (appliedCredits > 0 && !cartIsEmpty) {
+          creditsAppliedText.textContent = `Credits Applied: -${formatMoney(appliedCredits)} (Code: ${storedDiscountCode})`;
+          creditsAppliedSection.classList.add('active');
+        } else {
+          clearCreditsAfterCheckout();
+        }
+      }
+    }
+
+    // Check if user is already authenticated
+    if (supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          currentUser = session.user;
+        }
+      });
+    }
+
+    // Listen for checkout button click to prepare for post-checkout cleanup
+    const checkoutBtn = document.getElementById('checkout');
+    if (checkoutBtn) {
+      checkoutBtn.addEventListener('click', function() {
+        // Mark that user is going to checkout
+        sessionStorage.setItem('isCheckingOut', 'true');
+      });
+    }
+
+    // Additional cleanup: clear credits if returning to empty cart
+    window.addEventListener('pageshow', function(event) {
+      // Check if page is loaded from cache (back button)
+      if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+        const cartIsEmpty = document.querySelector('.page-width.is-empty') !== null;
+        if (cartIsEmpty) {
+          clearCreditsAfterCheckout();
+        }
+      }
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "t:sections.main-cart-footer.name",
+  "class": "cart__footer-wrapper",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_cart_note",
+      "default": false,
+      "label": "t:sections.main-cart-footer.settings.show_cart_note.label"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "subtotal",
+      "name": "t:sections.main-cart-footer.blocks.subtotal.name",
+      "limit": 1
+    },
+    {
+      "type": "buttons",
+      "name": "t:sections.main-cart-footer.blocks.buttons.name",
+      "limit": 1
+    },
+    {
+      "type": "@app"
+    }
+  ]
+}
+{% endschema %}
