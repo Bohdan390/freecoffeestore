@@ -2,7 +2,6 @@
   "name": "shopify-credits-api",
   "version": "1.0.0",
   "description": "Backend API for Shopify Credits System using Draft Order API",
-  "main": "index.js",
   "scripts": {
     "dev": "vercel dev",
     "deploy": "vercel --prod"
