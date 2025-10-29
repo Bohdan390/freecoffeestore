@@ -1,13 +1,16 @@
 {
   "name": "shopify-credits-api",
   "version": "1.0.0",
-  "description": "Backend API for Shopify Credits System using Draft Order API",
+  "description": "Backend API for Shopify Credits System",
+  "main": "index.js",
   "scripts": {
-    "dev": "vercel dev",
-    "deploy": "vercel --prod"
+    "start": "node index.js",
+    "dev": "node index.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0"
+    "@supabase/supabase-js": "^2.39.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
   },
   "engines": {
     "node": ">=18.x"
